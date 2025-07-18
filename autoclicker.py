@@ -15,8 +15,8 @@ class AutoClicker:
         self.second_interval = 0.5
         self.click_delay = 0.01
         self.transition_delay = 2.0
-        self.point_delay = 2.0
-        self.second_point_delay = 2.0
+        self.point_delay = 0.0
+        self.second_point_delay = 0.0
 
     def add_point(self, x, y):
         self.points.append((x, y))

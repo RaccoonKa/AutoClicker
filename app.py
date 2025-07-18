@@ -1,4 +1,4 @@
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from autoclicker import AutoClicker
 import tkinter as tk
 import cv2
@@ -22,8 +22,9 @@ class AutoClickerApp:
         self.detection_threshold = 5
         self.second_algorithm_active = False
         self.match_threshold = 0.8
-        self.check_interval = 500
+        self.check_interval = 1000
         self.monitoring_active = True
+        self.templates_dir = "assets"
 
         self.clicker = AutoClicker()
         self.setup_ui()
@@ -32,10 +33,20 @@ class AutoClickerApp:
         self.load_templates()
         self.start_monitoring()
 
+    def select_templates_directory(self):
+        dir_path = filedialog.askdirectory(
+            title="Select Templates Folder",
+            initialdir=self.templates_dir
+        )
+        if dir_path:
+            self.templates_dir = dir_path
+            self.dir_label.config(text=f"Folder: {dir_path}")
+            self.load_templates()
+
     def load_templates(self):
         self.templates = []
         self.template_sizes = []
-        assets_dir = "assets"
+        assets_dir = self.templates_dir
         valid_extensions = ('.png', '.jpg', '.jpeg', '.bmp')
 
         if not os.path.exists(assets_dir):
@@ -44,9 +55,11 @@ class AutoClickerApp:
 
         for filename in os.listdir(assets_dir):
             if filename.lower().endswith(valid_extensions):
-                path = os.path.join(assets_dir, filename)
                 try:
-                    img = cv2.imread(path, cv2.IMREAD_COLOR)
+                    path = os.path.normpath(os.path.join(assets_dir, filename))
+                    with open(path, 'rb') as f:
+                        img_bytes = np.frombuffer(f.read(), np.uint8)
+                        img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
                     if img is not None:
                         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                         self.templates.append(gray)
@@ -65,13 +78,17 @@ class AutoClickerApp:
             self.root.after(self.check_interval, self.check_image)
 
     def setup_ui(self):
+
+        powered_label = ttk.Label(self.root, text="Powered by RaccoonKa", font=('Calibri', 8))
+        powered_label.pack(side="top", anchor="ne", padx=10, pady=5)
+
         style = ttk.Style()
         style.configure("TButton", padding=6)
 
         points_frame = ttk.LabelFrame(self.root, text="Click Positions")
         points_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-        self.points_list = tk.Listbox(points_frame, height=8)
+        self.points_list = tk.Listbox(points_frame, height=4)
         self.points_list.pack(padx=5, pady=5, fill="both", expand=True)
 
         control_frame = ttk.Frame(self.root)
@@ -98,6 +115,18 @@ class AutoClickerApp:
 
         image_frame = ttk.LabelFrame(self.root, text="Image detection settings")
         image_frame.pack(padx=10, pady=5, fill="x")
+
+        dir_frame = ttk.Frame(image_frame)
+        dir_frame.pack(fill="x", pady=(0, 5))
+
+        ttk.Button(
+            dir_frame,
+            text="Select Templates Folder",
+            command=self.select_templates_directory
+        ).pack(side="left", padx=(0, 5))
+
+        self.dir_label = ttk.Label(dir_frame, text=f"Folder: {self.templates_dir}")
+        self.dir_label.pack(side="left")
 
         ttk.Label(image_frame, text="Detection threshold:").pack(side="left")
         self.threshold_var = tk.IntVar(value=self.detection_threshold)
@@ -244,7 +273,10 @@ class AutoClickerApp:
                     cv2.rectangle(screenshot_np, top_left, bottom_right, (0, 255, 0), 2)
 
                     output_path = "detection_result.jpg"
-                    cv2.imwrite(output_path, cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR))
+                    success, buffer = cv2.imencode('.jpg', cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR))
+                    if success:
+                        with open(output_path, 'wb') as f:
+                            f.write(buffer)
 
                     messagebox.showinfo("Success",
                                         f"Image found (coincidence: {max_val:.2f})\n"
