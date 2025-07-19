@@ -10,13 +10,14 @@ class AutoClicker:
         self.running = False
         self.thread = None
         self.hotkey_enabled = True
-        self.click_delay = 0.01
+        self.click_delay = 0.05
         self.second_points = []
         self.second_interval = 0.5
         self.click_delay = 0.01
-        self.transition_delay = 2.0
+        self.transition_delay = 1.0
         self.point_delay = 0.0
         self.second_point_delay = 0.0
+        self.second_algorithm_repeats = 1
 
     def add_point(self, x, y):
         self.points.append((x, y))
@@ -47,15 +48,7 @@ class AutoClicker:
                 x, y = point
                 pyautogui.mouseDown(x, y)
                 time.sleep(self.click_delay)
-                if self.point_delay > 0:
-                    time.sleep(self.point_delay)
-
-            for point in self.points:
-                if not self.running:
-                    return
-                x, y = point
                 pyautogui.mouseUp(x, y)
-                time.sleep(self.click_delay)
                 if self.point_delay > 0:
                     time.sleep(self.point_delay)
             time.sleep(self.interval)
@@ -70,19 +63,16 @@ class AutoClicker:
         self.second_interval = max(0.0, interval)
 
     def execute_second_algorithm(self):
-        time.sleep(self.transition_delay)
-        for point in self.second_points:
-            x, y = point
-            pyautogui.mouseDown(x, y)
-            time.sleep(self.click_delay)
-            if self.second_point_delay > 0:
-                time.sleep(self.second_point_delay)
+        for _ in range(self.second_algorithm_repeats):
+            time.sleep(self.transition_delay)
+            for point in self.second_points:
+                x, y = point
+                pyautogui.mouseDown(x, y)
+                time.sleep(self.click_delay)
+                pyautogui.mouseUp(x, y)
+                if self.second_point_delay > 0:
+                    time.sleep(self.second_point_delay)
+            time.sleep(self.second_interval)
 
-        for point in self.second_points:
-            x, y = point
-            pyautogui.mouseUp(x, y)
-            time.sleep(self.click_delay)
-            if self.second_point_delay > 0:
-                time.sleep(self.second_point_delay)
-
-        time.sleep(self.second_interval)
+    def set_second_algorithm_repeats(self, repeats):
+        self.second_algorithm_repeats = max(1, repeats)
